@@ -1,0 +1,30 @@
+{
+  "name": "indieping",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/web/index.ts",
+    "dev:all": "concurrently -n api,web -c cyan,green \"npm run dev\" \"npm run dev --prefix frontend\"",
+    "build": "tsc --noEmit && npm run build --prefix frontend",
+    "scanner": "tsx src/scanner/index.ts",
+    "digest": "tsx src/digest.ts",
+    "import": "tsx scripts/import.ts",
+    "refresh-names": "tsx scripts/refresh-blog-names.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "better-sqlite3": "^11.9.1",
+    "cheerio": "^1.0.0",
+    "hono": "^4.7.7",
+    "mailgun.js": "^12.0.3",
+    "rss-parser": "^3.13.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.14.1",
+    "concurrently": "^9.1.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}
