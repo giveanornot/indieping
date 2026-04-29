@@ -3,11 +3,13 @@ import { runDigest } from './digest.js'
 
 function scheduleInterval(label: string, intervalMs: number, fn: () => Promise<void>) {
   console.log(`[scheduler] ${label} every ${Math.round(intervalMs / 3600000 * 10) / 10}h`)
-  setTimeout(async function tick() {
+  const tick = async () => {
     console.log(`[scheduler] starting ${label}`)
     try { await fn() } catch (e) { console.error(`[scheduler] ${label} error:`, e) }
+    console.log(`[scheduler] ${label} next run in ${Math.round(intervalMs / 3600000 * 10) / 10}h`)
     setTimeout(tick, intervalMs)
-  }, intervalMs)
+  }
+  setTimeout(tick, intervalMs)
 }
 
 function scheduleDaily(label: string, hour: number, fn: () => Promise<void>) {
