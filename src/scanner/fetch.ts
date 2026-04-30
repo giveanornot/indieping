@@ -13,7 +13,6 @@ function decodeHtmlEntities(str: string): string {
 }
 
 const parser = new RSSParser({
-  timeout: 60000,
   customFields: { item: ['content:encoded', 'content'] },
 })
 
@@ -48,7 +47,13 @@ async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
 
 export async function fetchRSS(rssUrl: string): Promise<FetchResult> {
   try {
-    const feed = await parser.parseURL(rssUrl)
+    const res = await fetch(rssUrl, {
+      signal: AbortSignal.timeout(30000),
+      headers: { 'User-Agent': USER_AGENT },
+    })
+    if (!res.ok) return { items: [], error: `HTTP ${res.status}` }
+    const xml = await res.text()
+    const feed = await parser.parseString(xml)
     const items: RSSItem[] = feed.items.map((item) => ({
       url: item.link ?? '',
       title: item.title ?? '',
