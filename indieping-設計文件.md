@@ -1,6 +1,6 @@
 # 海巡小精靈 — 設計文件
 
-> 最後更新：2026-04-28
+> 最後更新：2026-05-12
 
 ---
 
@@ -169,37 +169,38 @@ pending_blogs (
 
 ## API Routes
 
-| Method | Path                              | 說明                                        |
-| ------ | --------------------------------- | ------------------------------------------- |
-| GET    | `/api/query?domain=`              | 查詢 backlink；不在名單則存入 pending_blogs |
-| POST   | `/api/subscribe`                  | 訂閱（寄確認信）                            |
-| GET    | `/api/confirm/:token`             | 確認訂閱                                    |
-| GET    | `/api/unsubscribe/:token`         | 退訂                                        |
-| GET    | `/api/admin/pending`              | 待審核名單                                  |
-| POST   | `/api/admin/pending/discover`     | 批次探索所有 pending 的 RSS                 |
-| POST   | `/api/admin/pending/discover-one` | 探索單一 pending 的 RSS                     |
-| POST   | `/api/admin/pending/:id/approve`  | 核准                                        |
-| POST   | `/api/admin/pending/:id/reject`   | 拒絕                                        |
-| PATCH  | `/api/admin/pending/:id`          | 更新 rss_url                                |
-| GET    | `/api/admin/blogs`                | blogs 列表                                  |
-| PATCH  | `/api/admin/blogs/:id`            | 編輯 blog                                   |
-| DELETE | `/api/admin/blogs/:id`            | 刪除 blog（cascade）                        |
-| GET    | `/api/admin/subscriptions`        | 訂閱清單                                    |
-| DELETE | `/api/admin/subscriptions/:id`    | 刪除訂閱                                    |
-| GET    | `/api/admin/links`                | links 總覽（分頁、排序、filter）            |
+| Method | Path | 說明 |
+| --- | --- | --- |
+| GET | `/api/query?domain=` | 查詢 backlink；回傳 `reason`（pending/no_rss/not_found/unreachable）；後兩者不寫 pending_blogs |
+| POST | `/api/query/rss` | 手動提交 RSS URL；HEAD 驗證確認是 RSS/XML 後存入 pending_blogs |
+| POST | `/api/subscribe` | 訂閱（寄確認信） |
+| GET | `/api/confirm/:token` | 確認訂閱 |
+| GET | `/api/unsubscribe/:token` | 退訂 |
+| GET | `/api/admin/pending` | 待審核名單 |
+| POST | `/api/admin/pending/discover` | 批次探索所有 pending 的 RSS |
+| POST | `/api/admin/pending/discover-one` | 探索單一 pending 的 RSS |
+| POST | `/api/admin/pending/:id/approve` | 核准 |
+| POST | `/api/admin/pending/:id/reject` | 拒絕 |
+| PATCH | `/api/admin/pending/:id` | 更新 rss_url |
+| GET | `/api/admin/blogs` | blogs 列表 |
+| PATCH | `/api/admin/blogs/:id` | 編輯 blog |
+| DELETE | `/api/admin/blogs/:id` | 刪除 blog（cascade） |
+| GET | `/api/admin/subscriptions` | 訂閱清單 |
+| DELETE | `/api/admin/subscriptions/:id` | 刪除訂閱 |
+| GET | `/api/admin/links` | links 總覽（分頁、排序、filter） |
 
 ---
 
 ## Frontend Routes
 
-| Path             | View              | 說明                    |
-| ---------------- | ----------------- | ----------------------- |
-| `/`              | Query.vue         | 查詢 backlink           |
-| `/admin`         | → redirect        | 跳轉到 `/admin/pending` |
-| `/admin/pending` | Pending.vue       | 待審核部落格            |
-| `/admin/blogs`   | Blogs.vue         | 部落格名單管理          |
-| `/admin/subs`    | Subscriptions.vue | 訂閱清單                |
-| `/admin/links`   | Links.vue         | Links 總覽              |
+| Path | View | 說明 |
+| --- | --- | --- |
+| `/:domain?` | Query.vue | 查詢 backlink；帶 domain 時自動查詢，URL 可直接分享 |
+| `/admin` | → redirect | 跳轉到 `/admin/pending` |
+| `/admin/pending` | Pending.vue | 待審核部落格 |
+| `/admin/blogs` | Blogs.vue | 部落格名單管理 |
+| `/admin/subs` | Subscriptions.vue | 訂閱清單 |
+| `/admin/links` | Links.vue | Links 總覽 |
 
 Admin 頁面不在 nav bar 顯示，直接輸入網址進入。
 
@@ -212,7 +213,10 @@ Admin 頁面不在 nav bar 顯示，直接輸入網址進入。
 ### 1. 使用者查詢觸發
 
 - 使用者在查詢頁輸入一個不在名單的 domain
-- 系統自動存入 `pending_blogs`，同時嘗試探索 RSS URL
+- 系統嘗試自動探索 RSS URL
+  - `not_found` / `unreachable`：回傳錯誤，**不**寫入 pending_blogs
+  - `no_rss`：寫入 pending_blogs（rss_url 為 null），前端顯示手動輸入 RSS URL 的欄位
+  - 找到 RSS：寫入 pending_blogs（含 rss_url），狀態為 `pending`
 - Admin 在 Pending 頁面核准後進入 `blogs`
 
 ### 2. 手動匯入
