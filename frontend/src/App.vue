@@ -16,9 +16,12 @@
         <span style="flex: 1" />
         <!-- 管理入口隱藏，直接輸入 /admin 進入 -->
       </n-layout-header>
-      <n-layout-content style="padding: 24px; max-width: 900px; margin: 0 auto">
+      <n-layout-content style="padding: 24px 24px 60px; max-width: 1200px; margin: 0 auto">
         <router-view />
       </n-layout-content>
+      <footer style="position: fixed; bottom: 0; left: 0; right: 0; padding: 10px; border-top: 1px solid #eee; font-size: 13px; color: #999; text-align: center; background: var(--n-color)">
+        Made with ♥ by <a href="https://blog.giveanornot.com" target="_blank" style="color: inherit">JN</a>
+      </footer>
     </n-layout>
   </n-config-provider>
 </template>
