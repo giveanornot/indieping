@@ -16,7 +16,9 @@
       :loading="loading"
       :pagination="pagination"
       :row-key="(r: AggregatedRow) => r.post_url"
+      :scroll-x="980"
       @update:page="onPage"
+      @update:page-size="onPageSize"
       @update:sorter="onSorter"
     />
   </div>
@@ -87,6 +89,12 @@ function onPage(page: number) {
   load()
 }
 
+function onPageSize(pageSize: number) {
+  pagination.pageSize = pageSize
+  pagination.page = 1
+  load()
+}
+
 function onSorter(sorter: DataTableSortState | null) {
   if (!sorter || !sorter.order) {
     // cleared — revert to default
@@ -105,6 +113,7 @@ const columns = computed(() => [
   {
     title: '來源文章',
     key: 'published_at',
+    width: 320,
     sortOrder: sortField.value === 'published_at' ? (sortOrder.value === 'asc' ? 'ascend' : 'descend') : false,
     sorter: true,
     render: (r: AggregatedRow) =>
@@ -124,6 +133,7 @@ const columns = computed(() => [
   {
     title: 'Targets',
     key: 'targets',
+    width: 400,
     render: (r: AggregatedRow) =>
       h('div', { style: 'display:flex;flex-direction:column;gap:4px;padding:4px 0' },
         r.targets.map(t =>

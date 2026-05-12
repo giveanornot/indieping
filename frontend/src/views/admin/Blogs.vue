@@ -6,8 +6,9 @@
       :columns="columns"
       :data="filteredItems"
       :loading="loading"
-      :pagination="{ pageSize: 50, showSizePicker: true, pageSizes: [25, 50, 100] }"
+      :pagination="pagination"
       :default-sort="{ columnKey: 'domain', order: 'ascend' }"
+      :scroll-x="860"
     />
 
     <n-modal v-model:show="editModal" preset="card" title="編輯部落格" style="max-width: 480px">
@@ -33,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, onMounted, ref } from 'vue'
+import { computed, h, onMounted, reactive, ref } from 'vue'
 import { NButton, NDataTable, NForm, NFormItem, NH2, NInput, NModal, NSpace, NTag } from 'naive-ui'
 
 interface Blog {
@@ -49,6 +50,7 @@ interface Blog {
 const items = ref<Blog[]>([])
 const loading = ref(false)
 const filter = ref('')
+const pagination = reactive({ pageSize: 50, showSizePicker: true, pageSizes: [25, 50, 100] })
 const editModal = ref(false)
 const editTarget = ref<Blog | null>(null)
 const saving = ref(false)
@@ -95,6 +97,7 @@ const columns = [
   {
     title: 'Domain',
     key: 'domain',
+    width: 260,
     sorter: (a: Blog, b: Blog) => a.domain.localeCompare(b.domain),
     defaultSortOrder: 'ascend' as const,
     render: (r: Blog) => h('a', { href: r.url, target: '_blank', rel: 'noopener' }, r.domain),
@@ -102,11 +105,13 @@ const columns = [
   {
     title: '名稱',
     key: 'name',
+    width: 260,
     sorter: (a: Blog, b: Blog) => (a.name ?? '').localeCompare(b.name ?? ''),
   },
   {
     title: '最後掃描',
     key: 'last_scanned_at',
+    width: 120,
     sorter: (a: Blog, b: Blog) => (a.last_scanned_at ?? '').localeCompare(b.last_scanned_at ?? ''),
     render: (r: Blog) => r.last_scanned_at?.slice(0, 10) ?? '—',
   },
