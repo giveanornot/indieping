@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { getDb } from '../../db/client.js'
 import { discoverBlogInfo } from '../../scanner/fetch.js'
-import { normalizeDomain } from '../../utils.js'
+import { normalizeDomain, USER_AGENT } from '../../utils.js'
 import type { LinkWithPost } from '../../types.js'
 
 const app = new Hono()
@@ -73,7 +73,7 @@ app.post('/rss', async (c) => {
     const res = await fetch(rssUrl, {
       method: 'HEAD',
       signal: AbortSignal.timeout(10000),
-      headers: { 'User-Agent': (await import('../../utils.js')).USER_AGENT },
+      headers: { 'User-Agent': USER_AGENT },
     })
     if (!res.ok) return c.json({ error: 'fetch_failed', status: res.status }, 400)
     const ct = res.headers.get('content-type') ?? ''
