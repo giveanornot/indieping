@@ -11,7 +11,7 @@ import AdminLinks from './views/admin/Links.vue'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', component: Query },
+    { path: '/:domain?', component: Query },
     { path: '/subscribe', component: Subscribe },
     { path: '/admin', redirect: '/admin/pending' },
     { path: '/admin/pending', component: AdminPending },
