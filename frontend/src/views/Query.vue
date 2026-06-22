@@ -155,7 +155,7 @@ const columns = [
     render: (r: AggregatedPost) =>
       h('div', [
         h('a', { href: r.post_url, target: '_blank', style: 'color: inherit; display: block' }, r.post_title || r.post_url),
-        h('span', { style: 'color: #999; font-size: 12px' }, r.published_at?.slice(0, 10) ?? ''),
+        h('span', { style: 'color: var(--n-text-color-3); font-size: 12px' }, r.published_at?.slice(0, 10) ?? ''),
       ]),
   },
   {
@@ -171,7 +171,7 @@ const columns = [
     render: (r: AggregatedPost) =>
       h('div', { style: 'display:flex;flex-direction:column;gap:6px;padding:4px 0' },
         r.targets.map(t =>
-          h('span', { style: 'color:#555;font-size:13px', innerHTML: inlineLink(t.url, t.linkText, t.context) })
+          h('span', { style: 'color:var(--n-text-color-2);font-size:13px', innerHTML: inlineLink(t.url, t.linkText, t.context) })
         )
       ),
   },

@@ -4,7 +4,14 @@
     <n-space style="margin-bottom: 16px">
       <n-input v-model:value="filterDomain" placeholder="target domain" clearable @update:value="debouncedLoad" />
       <n-input v-model:value="filterBlog" placeholder="source blog domain" clearable @update:value="debouncedLoad" />
-      <n-input v-model:value="filterDate" type="date" @update:value="resetAndLoad" />
+      <n-date-picker
+        v-model:formatted-value="filterDate"
+        type="date"
+        value-format="yyyy-MM-dd"
+        clearable
+        style="width: 160px"
+        @update:formatted-value="resetAndLoad"
+      />
     </n-space>
     <n-text v-if="total !== null" depth="3" style="display: block; margin-bottom: 8px; font-size: 13px">
       共 {{ total }} 篇文章
@@ -26,7 +33,7 @@
 
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref } from 'vue'
-import { NDataTable, NH2, NInput, NSpace, NText } from 'naive-ui'
+import { NDataTable, NDatePicker, NH2, NInput, NSpace, NText } from 'naive-ui'
 import type { DataTableSortState } from 'naive-ui'
 import { inlineLink } from '@/utils/links'
 
@@ -54,7 +61,7 @@ const total = ref<number | null>(null)
 const loading = ref(false)
 const filterDomain = ref('')
 const filterBlog = ref('')
-const filterDate = ref('')
+const filterDate = ref<string | null>(null)
 const sortField = ref('scanned_at')
 const sortOrder = ref<'asc' | 'desc'>('desc')
 
@@ -119,7 +126,7 @@ const columns = computed(() => [
     render: (r: AggregatedRow) =>
       h('div', [
         h('a', { href: r.post_url, target: '_blank', style: 'color: inherit; display: block' }, r.post_title || r.post_url),
-        h('span', { style: 'color: #999; font-size: 12px' }, r.published_at?.slice(0, 10) ?? ''),
+        h('span', { style: 'color: var(--n-text-color-3); font-size: 12px' }, r.published_at?.slice(0, 10) ?? ''),
       ]),
   },
   {
@@ -139,7 +146,7 @@ const columns = computed(() => [
         r.targets.map(t =>
           h('div', { style: 'margin-bottom:6px' }, [
             h('span', { style: 'font-size:11px;font-weight:600;display:block;margin-bottom:1px' }, t.blogName || t.domain),
-            h('span', { style: 'color:#555;font-size:13px', innerHTML: inlineLink(t.url, t.linkText, t.context) }),
+            h('span', { style: 'color:var(--n-text-color-2);font-size:13px', innerHTML: inlineLink(t.url, t.linkText, t.context) }),
           ])
         )
       ),

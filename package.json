@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "tsx watch src/web/index.ts",
     "dev:all": "concurrently -n api,web -c cyan,green \"npm run dev\" \"npm run dev --prefix frontend\"",
