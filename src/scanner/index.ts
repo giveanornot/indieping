@@ -12,7 +12,8 @@ async function scanBlog(blog: Blog, blogDomains: Set<string>): Promise<void> {
   const db = getDb()
   const now = new Date().toISOString()
   const insertLink = db.prepare(
-    `INSERT INTO links (post_id, target_url, target_domain, link_text, context) VALUES (?, ?, ?, ?, ?)`
+    `INSERT INTO links (post_id, target_url, target_domain, link_text, context, first_seen_at, last_seen_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
   )
 
   const { items, error } = await fetchRSS(blog.rss_url)
@@ -55,11 +56,21 @@ async function scanBlog(blog: Blog, blogDomains: Set<string>): Promise<void> {
     const links = extractLinks(html, item.url).filter(l => blogDomains.has(l.targetDomain))
 
     if (existingPost) {
+      const previousLinks = db.prepare(`
+        SELECT target_url, MIN(first_seen_at) AS first_seen_at
+        FROM links
+        WHERE post_id = ?
+        GROUP BY target_url
+      `).all(existingPost.id) as { target_url: string; first_seen_at: string | null }[]
+      const firstSeenByTarget = new Map(previousLinks.map(l => [l.target_url, l.first_seen_at ?? now]))
+
       db.prepare(`UPDATE posts SET content_hash = ?, scanned_at = ?, content_source = ? WHERE id = ?`)
         .run(hash, now, source, existingPost.id)
       db.transaction(() => {
         db.prepare(`DELETE FROM links WHERE post_id = ?`).run(existingPost.id)
-        for (const l of links) insertLink.run(existingPost.id, l.targetUrl, l.targetDomain, l.linkText, l.context)
+        for (const l of links) {
+          insertLink.run(existingPost.id, l.targetUrl, l.targetDomain, l.linkText, l.context, firstSeenByTarget.get(l.targetUrl) ?? now, now)
+        }
       })()
     } else {
       const result = db.prepare(
@@ -69,7 +80,7 @@ async function scanBlog(blog: Blog, blogDomains: Set<string>): Promise<void> {
 
       const postId = result.lastInsertRowid as number
       db.transaction(() => {
-        for (const l of links) insertLink.run(postId, l.targetUrl, l.targetDomain, l.linkText, l.context)
+        for (const l of links) insertLink.run(postId, l.targetUrl, l.targetDomain, l.linkText, l.context, now, now)
       })()
     }
   }

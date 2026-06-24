@@ -10,6 +10,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': 'http://localhost:3000',
+      '/feed': 'http://localhost:3000',
     },
   },
 })

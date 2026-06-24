@@ -38,6 +38,12 @@
       <div v-if="result?.inList">
         <n-divider />
         <n-h3 style="margin-bottom: 12px">找到 {{ result.links.length }} 個 backlink，來自 {{ aggregated.length }} 篇文章</n-h3>
+        <!-- 暫不公開 RSS 入口；先部署到 prod 手動驗證 /feed/{domain}.xml 後再 release。
+        <n-alert type="info" style="margin-bottom: 16px">
+          <template #header>RSS Feed</template>
+          訂閱 <a :href="feedPath" target="_blank" rel="noopener" style="color: inherit">{{ feedUrl }}</a>，之後 IndiePing 掃到新的 backlink 時，RSS reader 會收到通知。
+        </n-alert>
+        -->
         <n-data-table
           :columns="columns"
           :data="aggregated"
@@ -146,6 +152,10 @@ const aggregated = computed<AggregatedPost[]>(() => {
   }
   return [...map.values()]
 })
+
+// 暫不公開 RSS 入口；先保留計算邏輯，release 時恢復 template 即可。
+// const feedPath = computed(() => result.value?.domain ? `/feed/${result.value.domain}.xml` : '#')
+// const feedUrl = computed(() => result.value?.domain ? `${window.location.origin}${feedPath.value}` : '')
 
 const columns = [
   {

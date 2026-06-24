@@ -9,7 +9,7 @@ export async function runDigest(): Promise<void> {
 
   const yesterday = new Date()
   yesterday.setDate(yesterday.getDate() - 1)
-  const since = yesterday.toISOString().slice(0, 10)
+  const since = yesterday.toISOString()
 
   const links = db.prepare(`
     SELECT
@@ -22,11 +22,13 @@ export async function runDigest(): Promise<void> {
       l.target_url,
       l.link_text,
       l.target_domain,
+      l.first_seen_at,
+      l.last_seen_at,
       l.context
     FROM links l
     JOIN posts p ON p.id = l.post_id
     JOIN blogs b ON b.id = p.blog_id
-    WHERE DATE(p.scanned_at) >= ?
+    WHERE l.first_seen_at >= ?
   `).all(since) as (LinkWithPost & { target_domain: string })[]
 
   const byDomain = new Map<string, typeof links>()

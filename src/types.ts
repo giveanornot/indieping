@@ -25,6 +25,8 @@ export interface Link {
   post_id: number
   target_url: string
   target_domain: string
+  first_seen_at: string
+  last_seen_at: string
   context: string
 }
 
@@ -57,5 +59,7 @@ export interface LinkWithPost {
   blog_url: string
   target_url: string
   link_text: string
+  first_seen_at: string
+  last_seen_at: string
   context: string
 }

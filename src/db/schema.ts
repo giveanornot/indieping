@@ -31,6 +31,8 @@ export function initSchema(): void {
       post_id       INTEGER NOT NULL REFERENCES posts(id),
       target_url    TEXT NOT NULL,
       target_domain TEXT NOT NULL,
+      first_seen_at DATETIME NOT NULL,
+      last_seen_at  DATETIME NOT NULL,
       context       TEXT NOT NULL
     );
 
@@ -63,5 +65,16 @@ export function initSchema(): void {
 
   try { db.exec(`ALTER TABLE pending_blogs ADD COLUMN name TEXT`) } catch { /* already exists */ }
   try { db.exec(`ALTER TABLE links ADD COLUMN link_text TEXT NOT NULL DEFAULT ''`) } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE links ADD COLUMN first_seen_at DATETIME`) } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE links ADD COLUMN last_seen_at DATETIME`) } catch { /* already exists */ }
   try { db.exec(`ALTER TABLE blogs RENAME COLUMN consecutive_fail_days TO consecutive_fails`) } catch { /* already exists */ }
+
+  const now = new Date().toISOString()
+  db.prepare(`
+    UPDATE links
+    SET
+      first_seen_at = COALESCE(first_seen_at, (SELECT scanned_at FROM posts WHERE posts.id = links.post_id), ?),
+      last_seen_at = COALESCE(last_seen_at, (SELECT scanned_at FROM posts WHERE posts.id = links.post_id), ?)
+    WHERE first_seen_at IS NULL OR last_seen_at IS NULL
+  `).run(now, now)
 }

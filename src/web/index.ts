@@ -8,6 +8,7 @@ import { startScheduler } from '../scheduler.js'
 import queryRoute from './routes/query.js'
 import subscribeRoute from './routes/subscribe.js'
 import adminRoute from './routes/admin.js'
+import feedRoute from './routes/feed.js'
 
 initSchema()
 startScheduler()
@@ -16,6 +17,7 @@ const app = new Hono()
 
 app.route('/api/query', queryRoute)
 app.route('/api', subscribeRoute)
+app.route('/feed', feedRoute)
 
 app.use('/api/admin/*', async (c, next) => {
   const password = process.env.ADMIN_PASSWORD
