@@ -50,30 +50,40 @@ function stableGuid(link: FeedLink): string {
   return `indieping:backlink:${hash}`
 }
 
-function buildItemDescription(link: FeedLink): string {
-  const parts = [
-    `<p><strong>來源 Blog:</strong> <a href="${escapeXml(link.blog_url)}">${escapeXml(link.blog_name)}</a></p>`,
-    `<p><strong>來源文章:</strong> <a href="${escapeXml(link.post_url)}">${escapeXml(link.post_title || link.post_url)}</a></p>`,
-    `<p><strong>連到:</strong> <a href="${escapeXml(link.target_url)}">${escapeXml(link.link_text || link.target_url)}</a></p>`,
-  ]
+function feedItemDate(link: FeedLink): string {
+  return link.published_at ?? link.first_seen_at
+}
+
+function buildLinkedSnippet(link: FeedLink): string {
+  const targetText = link.link_text || link.target_url
+  const safeTargetUrl = escapeXml(link.target_url)
+  const safeTargetText = escapeXml(targetText)
+
+  if (link.context && link.link_text && link.context.includes(link.link_text)) {
+    const idx = link.context.indexOf(link.link_text)
+    const before = escapeXml(link.context.slice(0, idx))
+    const after = escapeXml(link.context.slice(idx + link.link_text.length))
+    return `${before}<a href="${safeTargetUrl}">${safeTargetText}</a>${after}`
+  }
 
   if (link.context) {
-    parts.push(`<blockquote>${escapeXml(link.context)}</blockquote>`)
-  }
-  if (link.published_at) {
-    parts.push(`<p><strong>文章日期:</strong> ${escapeXml(link.published_at.slice(0, 10))}</p>`)
+    return `${escapeXml(link.context)}<br><a href="${safeTargetUrl}">${safeTargetText}</a>`
   }
 
-  return parts.join('\n')
+  return `<a href="${safeTargetUrl}">${safeTargetText}</a>`
+}
+
+function buildItemDescription(link: FeedLink): string {
+  return `<blockquote>${buildLinkedSnippet(link)}</blockquote>`
 }
 
 function buildFeed(domain: string, links: FeedLink[], origin: string): string {
   const feedUrl = absoluteUrl(origin, `/feed/${domain}.xml`)
   const queryUrl = absoluteUrl(origin, `/${domain}`)
-  const lastBuildDate = links[0]?.first_seen_at ?? new Date().toISOString()
+  const lastBuildDate = links[0] ? feedItemDate(links[0]) : new Date().toISOString()
 
   const items = links.map((link) => {
-    const title = `${link.blog_name} link 了 ${domain}: ${link.post_title || link.post_url}`
+    const title = `${link.blog_name} → ${domain}: ${link.post_title || link.post_url}`
     const guid = stableGuid(link)
     const description = buildItemDescription(link)
 
@@ -81,7 +91,7 @@ function buildFeed(domain: string, links: FeedLink[], origin: string): string {
       <title>${escapeXml(title)}</title>
       <link>${escapeXml(link.post_url)}</link>
       <guid isPermaLink="false">${escapeXml(guid)}</guid>
-      <pubDate>${formatRssDate(link.first_seen_at)}</pubDate>
+      <pubDate>${formatRssDate(feedItemDate(link))}</pubDate>
       <description>${escapeXml(description)}</description>
     </item>`
   }).join('\n')
@@ -89,9 +99,9 @@ function buildFeed(domain: string, links: FeedLink[], origin: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>${escapeXml(`IndiePing backlinks for ${domain}`)}</title>
+    <title>${escapeXml(`IndiePing: ${domain} 的 backlinks`)}</title>
     <link>${escapeXml(queryUrl)}</link>
-    <description>${escapeXml(`New backlinks found by IndiePing for ${domain}`)}</description>
+    <description>${escapeXml(`IndiePing 找到的獨立部落格 backlinks，目標 domain: ${domain}`)}</description>
     <language>zh-TW</language>
     <lastBuildDate>${formatRssDate(lastBuildDate)}</lastBuildDate>
     <atom:link href="${escapeXml(feedUrl)}" rel="self" type="application/rss+xml" />
@@ -132,7 +142,7 @@ app.get('/*', (c) => {
     JOIN posts p ON p.id = l.post_id
     JOIN blogs b ON b.id = p.blog_id
     WHERE l.target_domain = ?
-    ORDER BY l.first_seen_at DESC, l.id DESC
+    ORDER BY COALESCE(p.published_at, l.first_seen_at) DESC, l.id DESC
     LIMIT 300
   `).all(domain) as FeedLink[]
 
