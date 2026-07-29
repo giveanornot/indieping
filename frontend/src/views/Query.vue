@@ -39,11 +39,18 @@
         <n-divider />
         <div class="result-heading">
           <n-h3>找到 {{ result.links.length }} 個 backlink，來自 {{ aggregated.length }} 篇文章</n-h3>
-          <n-button secondary @click="copyFeedUrl">{{ feedCopied ? 'Feed URL 已複製' : '訂閱新 backlink' }}</n-button>
+          <n-button secondary title="複製 RSS Feed URL" aria-label="複製 RSS Feed URL" @click="copyFeedUrl">
+            <template #icon>
+              <n-icon aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="6" cy="18" r="2" />
+                  <path d="M4 10a10 10 0 0 1 10 10M4 4a16 16 0 0 1 16 16" />
+                </svg>
+              </n-icon>
+            </template>
+            RSS
+          </n-button>
         </div>
-        <n-text class="feed-hint" :type="feedCopied ? 'success' : undefined">
-          {{ feedCopied ? '貼到你的 RSS reader 即可訂閱。' : 'RSS reader 會在 IndiePing 發現新的 backlink 時收到通知。' }}
-        </n-text>
         <n-data-table
           :columns="columns"
           :data="aggregated"
@@ -71,7 +78,7 @@
 <script setup lang="ts">
 import { ref, computed, h, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NAlert, NButton, NCollapse, NCollapseItem, NDataTable, NDivider, NH1, NH3, NInput, NInputGroup, NText } from 'naive-ui'
+import { NAlert, NButton, NCollapse, NCollapseItem, NDataTable, NDivider, NH1, NH3, NIcon, NInput, NInputGroup, NText } from 'naive-ui'
 import { inlineLink } from '@/utils/links'
 
 const route = useRoute()
@@ -153,8 +160,7 @@ const aggregated = computed<AggregatedPost[]>(() => {
   return [...map.values()]
 })
 
-const feedUrl = computed(() => result.value?.domain ? `${window.location.origin}/feed/${result.value.domain}.xml` : '')
-const feedCopied = ref(false)
+const feedUrl = computed(() => result.value?.domain ? `${window.location.origin}/feed/${result.value.domain}` : '')
 
 async function copyFeedUrl() {
   if (!feedUrl.value) return
@@ -171,7 +177,6 @@ async function copyFeedUrl() {
     document.execCommand('copy')
     input.remove()
   }
-  feedCopied.value = true
 }
 
 const columns = [
@@ -218,7 +223,6 @@ async function search() {
   rssInput.value = ''
   rssSubmitted.value = false
   rssError.value = null
-  feedCopied.value = false
   loading.value = true
   try {
     const res = await fetch(`/api/query?domain=${encodeURIComponent(normalized)}`)
@@ -295,16 +299,23 @@ watch(domain, () => {
   margin-bottom: 0;
 }
 
-.feed-hint {
-  display: block;
-  margin-bottom: 12px;
-  font-size: 13px;
-}
-
 @media (max-width: 560px) {
   .result-heading {
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+.result-heading :deep(.n-icon svg) {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.result-heading :deep(.n-icon circle) {
+  fill: currentColor;
+  stroke: none;
 }
 </style>

@@ -158,7 +158,7 @@ function publicOrigin(requestUrl: string): string {
 }
 
 function buildFeed(domain: string, items: FeedItem[], origin: string): string {
-  const feedUrl = absoluteUrl(origin, `/feed/${domain}.xml`)
+  const feedUrl = absoluteUrl(origin, `/feed/${domain}`)
   const queryUrl = absoluteUrl(origin, `/${domain}`)
   const lastBuildDate = items[0] ? items[0].firstSeenAt : new Date().toISOString()
 
@@ -192,13 +192,17 @@ ${xmlItems}
 
 app.get('/*', (c) => {
   const path = new URL(c.req.url).pathname
-  const match = path.match(/^\/feed\/(.+)\.xml$/)
-  if (!match) return c.text('not found', 404)
+  const legacyMatch = path.match(/^\/feed\/(.+)\.xml$/)
+  const match = path.match(/^\/feed\/(.+)$/)
+  const rawDomain = legacyMatch?.[1] ?? match?.[1]
+  if (!rawDomain) return c.text('not found', 404)
 
-  const domain = normalizeDomain(match[1])
+  const domain = normalizeDomain(rawDomain)
   if (!domain || domain.includes(' ') || !/^[^\s.]+(\.[^\s.]+)+$/.test(domain)) {
     return c.text('invalid domain', 400)
   }
+
+  if (legacyMatch) return c.redirect(`/feed/${domain}`, 308)
 
   const db = getDb()
   const blog = db.prepare(`SELECT id FROM blogs WHERE domain = ?`).get(domain)
