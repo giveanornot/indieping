@@ -117,8 +117,9 @@ function buildItemDescription(item: FeedItem): string {
   const published = item.publishedAt
     ? `；文章發布於 ${formatDisplayDate(item.publishedAt)}`
     : ''
+  const source = `<a href="${escapeXml(item.postUrl)}">${escapeXml(sourceTitle(item))}</a>`
 
-  return `<p>這篇文章提到你的網站：</p><ul>${mentions}</ul><p><small>IndiePing 發現於 ${formatDisplayDate(item.firstSeenAt)}${published}</small></p>`
+  return `<p>${escapeXml(item.blogName)} 在 ${source} 中提到：</p><ul>${mentions}</ul><p><small>IndiePing 發現於 ${formatDisplayDate(item.firstSeenAt)}${published}</small></p>`
 }
 
 function groupFeedItems(links: FeedLink[]): FeedItem[] {
