@@ -39,7 +39,12 @@
         <n-divider />
         <div class="result-heading">
           <n-h3>找到 {{ result.links.length }} 個 backlink，來自 {{ aggregated.length }} 篇文章</n-h3>
-          <n-button secondary title="複製 RSS Feed URL" aria-label="複製 RSS Feed URL" @click="copyFeedUrl">
+          <n-button
+            secondary
+            :title="feedCopied ? 'Feed URL 已複製' : '複製 Feed URL'"
+            :aria-label="feedCopied ? 'Feed URL 已複製' : '複製 Feed URL'"
+            @click="copyFeedUrl"
+          >
             <template #icon>
               <n-icon aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -48,7 +53,7 @@
                 </svg>
               </n-icon>
             </template>
-            RSS
+            {{ feedCopied ? '已複製' : 'Feed' }}
           </n-button>
         </div>
         <n-data-table
@@ -161,6 +166,7 @@ const aggregated = computed<AggregatedPost[]>(() => {
 })
 
 const feedUrl = computed(() => result.value?.domain ? `${window.location.origin}/feed/${result.value.domain}` : '')
+const feedCopied = ref(false)
 
 async function copyFeedUrl() {
   if (!feedUrl.value) return
@@ -177,6 +183,7 @@ async function copyFeedUrl() {
     document.execCommand('copy')
     input.remove()
   }
+  feedCopied.value = true
 }
 
 const columns = [
@@ -223,6 +230,7 @@ async function search() {
   rssInput.value = ''
   rssSubmitted.value = false
   rssError.value = null
+  feedCopied.value = false
   loading.value = true
   try {
     const res = await fetch(`/api/query?domain=${encodeURIComponent(normalized)}`)
