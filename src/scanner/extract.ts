@@ -50,7 +50,8 @@ function getContext($: ReturnType<typeof load>, el: ReturnType<typeof $>[0]): st
   if (idx === -1) return linkText.slice(0, 80)
   const start = Math.max(0, idx - 20)
   const end = Math.min(parent.length, idx + linkText.length + 20)
-  return parent.slice(start, end).replace(/\s+/g, ' ').trim()
+  const excerpt = parent.slice(start, end).replace(/\s+/g, ' ').trim()
+  return `${start > 0 ? '…' : ''}${excerpt}${end < parent.length ? '…' : ''}`
 }
 
 export function contentHash(content: string): string {

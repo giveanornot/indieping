@@ -16,12 +16,15 @@ export function inlineLink(url: string, linkText: string, context: string): stri
   let fallback = url
   try { fallback = new URL(url).hostname.replace(/^www\./, '') } catch { /* keep url */ }
   const display = escapeHtml(cleanLinkText(linkText || fallback))
-  if (linkText && context.includes(linkText)) {
-    const idx = context.indexOf(linkText)
-    const before = escapeHtml(context.slice(0, idx))
-    const after = escapeHtml(context.slice(idx + linkText.length))
-    return `${before}<a href="${safeUrl}" target="_blank" rel="noopener">${display}</a>${after}`
+  const trimmedContext = context.trim()
+  const prefix = trimmedContext && !trimmedContext.startsWith('…') ? '…' : ''
+  const suffix = trimmedContext && !trimmedContext.endsWith('…') ? '…' : ''
+  if (linkText && trimmedContext.includes(linkText)) {
+    const idx = trimmedContext.indexOf(linkText)
+    const before = escapeHtml(trimmedContext.slice(0, idx))
+    const after = escapeHtml(trimmedContext.slice(idx + linkText.length))
+    return `${prefix}${before}<a href="${safeUrl}" target="_blank" rel="noopener">${display}</a>${after}${suffix}`
   }
-  const ctx = context ? ' ' + escapeHtml(context) : ''
+  const ctx = trimmedContext ? ` ${prefix}${escapeHtml(trimmedContext)}${suffix}` : ''
   return `<a href="${safeUrl}" target="_blank" rel="noopener">${display}</a>${ctx}`
 }

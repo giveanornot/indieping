@@ -37,13 +37,13 @@
     <Transition name="fade">
       <div v-if="result?.inList">
         <n-divider />
-        <n-h3 style="margin-bottom: 12px">找到 {{ result.links.length }} 個 backlink，來自 {{ aggregated.length }} 篇文章</n-h3>
-        <!-- 暫不公開 RSS 入口；先部署到 prod 手動驗證 /feed/{domain}.xml 後再 release。
-        <n-alert type="info" style="margin-bottom: 16px">
-          <template #header>RSS Feed</template>
-          訂閱 <a :href="feedPath" target="_blank" rel="noopener" style="color: inherit">{{ feedUrl }}</a>，之後 IndiePing 掃到新的 backlink 時，RSS reader 會收到通知。
-        </n-alert>
-        -->
+        <div class="result-heading">
+          <n-h3>找到 {{ result.links.length }} 個 backlink，來自 {{ aggregated.length }} 篇文章</n-h3>
+          <n-button secondary @click="copyFeedUrl">{{ feedCopied ? 'Feed URL 已複製' : '訂閱新 backlink' }}</n-button>
+        </div>
+        <n-text class="feed-hint" :type="feedCopied ? 'success' : undefined">
+          {{ feedCopied ? '貼到你的 RSS reader 即可訂閱。' : 'RSS reader 會在 IndiePing 發現新的 backlink 時收到通知。' }}
+        </n-text>
         <n-data-table
           :columns="columns"
           :data="aggregated"
@@ -153,9 +153,26 @@ const aggregated = computed<AggregatedPost[]>(() => {
   return [...map.values()]
 })
 
-// 暫不公開 RSS 入口；先保留計算邏輯，release 時恢復 template 即可。
-// const feedPath = computed(() => result.value?.domain ? `/feed/${result.value.domain}.xml` : '#')
-// const feedUrl = computed(() => result.value?.domain ? `${window.location.origin}${feedPath.value}` : '')
+const feedUrl = computed(() => result.value?.domain ? `${window.location.origin}/feed/${result.value.domain}.xml` : '')
+const feedCopied = ref(false)
+
+async function copyFeedUrl() {
+  if (!feedUrl.value) return
+  try {
+    await navigator.clipboard.writeText(feedUrl.value)
+  } catch {
+    const input = document.createElement('textarea')
+    input.value = feedUrl.value
+    input.setAttribute('readonly', '')
+    input.style.position = 'fixed'
+    input.style.opacity = '0'
+    document.body.append(input)
+    input.select()
+    document.execCommand('copy')
+    input.remove()
+  }
+  feedCopied.value = true
+}
 
 const columns = [
   {
@@ -201,6 +218,7 @@ async function search() {
   rssInput.value = ''
   rssSubmitted.value = false
   rssError.value = null
+  feedCopied.value = false
   loading.value = true
   try {
     const res = await fetch(`/api/query?domain=${encodeURIComponent(normalized)}`)
@@ -263,5 +281,30 @@ watch(domain, () => {
 .fade-leave-to {
   opacity: 0;
   transform: translateY(6px);
+}
+
+.result-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.result-heading :deep(.n-h3) {
+  margin-bottom: 0;
+}
+
+.feed-hint {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .result-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 </style>

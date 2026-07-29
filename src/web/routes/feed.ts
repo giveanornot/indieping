@@ -18,6 +18,15 @@ interface FeedLink {
   context: string
 }
 
+interface FeedItem {
+  postUrl: string
+  postTitle: string
+  publishedAt: string | null
+  blogName: string
+  firstSeenAt: string
+  links: FeedLink[]
+}
+
 const app = new Hono()
 
 function escapeXml(value: string): string {
@@ -40,18 +49,42 @@ function absoluteUrl(origin: string, path: string): string {
   return new URL(path, origin).toString()
 }
 
-function stableGuid(link: FeedLink): string {
+function stableGuid(item: FeedItem): string {
   const hash = createHash('sha256')
-    .update(link.post_url)
+    .update(item.postUrl)
     .update('\0')
-    .update(link.target_url)
-    .digest('hex')
-    .slice(0, 32)
-  return `indieping:backlink:${hash}`
+    .update(item.firstSeenAt)
+
+  for (const link of [...item.links].sort((a, b) => a.target_url.localeCompare(b.target_url))) {
+    hash.update('\0').update(link.target_url)
+  }
+
+  const digest = hash.digest('hex').slice(0, 32)
+  return `indieping:backlink:${digest}`
 }
 
-function feedItemDate(link: FeedLink): string {
-  return link.published_at ?? link.first_seen_at
+function formatDisplayDate(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat('zh-TW', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Taipei',
+  }).format(date)
+}
+
+function abbreviatedUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    const path = decodeURIComponent(parsed.pathname).replace(/\/$/, '')
+    return `${parsed.hostname.replace(/^www\./, '')}${path || ''}`
+  } catch {
+    return url
+  }
+}
+
+function sourceTitle(item: FeedItem): string {
+  return item.postTitle || abbreviatedUrl(item.postUrl)
 }
 
 function buildLinkedSnippet(link: FeedLink): string {
@@ -59,39 +92,86 @@ function buildLinkedSnippet(link: FeedLink): string {
   const safeTargetUrl = escapeXml(link.target_url)
   const safeTargetText = escapeXml(targetText)
 
-  if (link.context && link.link_text && link.context.includes(link.link_text)) {
-    const idx = link.context.indexOf(link.link_text)
-    const before = escapeXml(link.context.slice(0, idx))
-    const after = escapeXml(link.context.slice(idx + link.link_text.length))
-    return `${before}<a href="${safeTargetUrl}">${safeTargetText}</a>${after}`
+  const context = link.context.trim()
+  const prefix = context.startsWith('…') ? '' : '…'
+  const suffix = context.endsWith('…') ? '' : '…'
+
+  if (context && link.link_text && context.includes(link.link_text)) {
+    const idx = context.indexOf(link.link_text)
+    const before = escapeXml(context.slice(0, idx))
+    const after = escapeXml(context.slice(idx + link.link_text.length))
+    return `${prefix}${before}<a href="${safeTargetUrl}">${safeTargetText}</a>${after}${suffix}`
   }
 
-  if (link.context) {
-    return `${escapeXml(link.context)}<br><a href="${safeTargetUrl}">${safeTargetText}</a>`
+  if (context) {
+    return `${prefix}${escapeXml(context)}${suffix}<br><a href="${safeTargetUrl}">${safeTargetText}</a>`
   }
 
   return `<a href="${safeTargetUrl}">${safeTargetText}</a>`
 }
 
-function buildItemDescription(link: FeedLink): string {
-  return `<blockquote>${buildLinkedSnippet(link)}</blockquote>`
+function buildItemDescription(item: FeedItem): string {
+  const mentions = item.links
+    .map((link) => `<li>${buildLinkedSnippet(link)}</li>`)
+    .join('')
+  const published = item.publishedAt
+    ? `；文章發布於 ${formatDisplayDate(item.publishedAt)}`
+    : ''
+
+  return `<p>這篇文章提到你的網站：</p><ul>${mentions}</ul><p><small>IndiePing 發現於 ${formatDisplayDate(item.firstSeenAt)}${published}</small></p>`
 }
 
-function buildFeed(domain: string, links: FeedLink[], origin: string): string {
+function groupFeedItems(links: FeedLink[]): FeedItem[] {
+  const items = new Map<string, FeedItem>()
+
+  for (const link of links) {
+    const key = `${link.post_url}\0${link.first_seen_at}`
+    const item = items.get(key)
+    if (item) {
+      if (!item.links.some((existing) => existing.target_url === link.target_url)) item.links.push(link)
+      continue
+    }
+
+    items.set(key, {
+      postUrl: link.post_url,
+      postTitle: link.post_title,
+      publishedAt: link.published_at,
+      blogName: link.blog_name,
+      firstSeenAt: link.first_seen_at,
+      links: [link],
+    })
+  }
+
+  return [...items.values()].slice(0, 100)
+}
+
+function publicOrigin(requestUrl: string): string {
+  const configured = process.env.BASE_URL?.trim()
+  if (configured) {
+    try {
+      return new URL(configured).origin
+    } catch {
+      console.warn('[feed] ignoring invalid BASE_URL')
+    }
+  }
+  return new URL(requestUrl).origin
+}
+
+function buildFeed(domain: string, items: FeedItem[], origin: string): string {
   const feedUrl = absoluteUrl(origin, `/feed/${domain}.xml`)
   const queryUrl = absoluteUrl(origin, `/${domain}`)
-  const lastBuildDate = links[0] ? feedItemDate(links[0]) : new Date().toISOString()
+  const lastBuildDate = items[0] ? items[0].firstSeenAt : new Date().toISOString()
 
-  const items = links.map((link) => {
-    const title = `${link.blog_name} → ${domain}: ${link.post_title || link.post_url}`
-    const guid = stableGuid(link)
-    const description = buildItemDescription(link)
+  const xmlItems = items.map((item) => {
+    const title = `${item.blogName} 在〈${sourceTitle(item)}〉提到你`
+    const guid = stableGuid(item)
+    const description = buildItemDescription(item)
 
     return `    <item>
       <title>${escapeXml(title)}</title>
-      <link>${escapeXml(link.post_url)}</link>
+      <link>${escapeXml(item.postUrl)}</link>
       <guid isPermaLink="false">${escapeXml(guid)}</guid>
-      <pubDate>${formatRssDate(feedItemDate(link))}</pubDate>
+      <pubDate>${formatRssDate(item.firstSeenAt)}</pubDate>
       <description>${escapeXml(description)}</description>
     </item>`
   }).join('\n')
@@ -99,13 +179,13 @@ function buildFeed(domain: string, links: FeedLink[], origin: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>${escapeXml(`IndiePing: ${domain} 的 backlinks`)}</title>
+    <title>${escapeXml(`誰提到 ${domain}｜IndiePing`)}</title>
     <link>${escapeXml(queryUrl)}</link>
-    <description>${escapeXml(`IndiePing 找到的獨立部落格 backlinks，目標 domain: ${domain}`)}</description>
+    <description>${escapeXml(`IndiePing 新發現的 backlinks，目標 domain: ${domain}`)}</description>
     <language>zh-TW</language>
     <lastBuildDate>${formatRssDate(lastBuildDate)}</lastBuildDate>
     <atom:link href="${escapeXml(feedUrl)}" rel="self" type="application/rss+xml" />
-${items}
+${xmlItems}
   </channel>
 </rss>`
 }
@@ -142,22 +222,14 @@ app.get('/*', (c) => {
     JOIN posts p ON p.id = l.post_id
     JOIN blogs b ON b.id = p.blog_id
     WHERE l.target_domain = ?
-    ORDER BY COALESCE(p.published_at, l.first_seen_at) DESC, l.id DESC
-    LIMIT 300
+    ORDER BY l.first_seen_at DESC, l.id DESC
+    LIMIT 500
   `).all(domain) as FeedLink[]
 
-  const uniqueLinks: FeedLink[] = []
-  const seen = new Set<string>()
-  for (const link of links) {
-    const key = `${link.post_url}\0${link.target_url}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    uniqueLinks.push(link)
-    if (uniqueLinks.length >= 100) break
-  }
+  const items = groupFeedItems(links)
 
-  const origin = new URL(c.req.url).origin
-  return c.body(buildFeed(domain, uniqueLinks, origin), 200, {
+  const origin = publicOrigin(c.req.url)
+  return c.body(buildFeed(domain, items, origin), 200, {
     'Content-Type': 'application/rss+xml; charset=utf-8',
     'Cache-Control': 'public, max-age=300',
   })
